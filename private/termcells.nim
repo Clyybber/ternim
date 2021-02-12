@@ -11,6 +11,8 @@ func toCellRT(ch: string): TermCell =
 
 func cell*(ch: static string): TermCell = toCellCT(ch)
 func cell*(ch: string): TermCell = toCellRT(ch)
+func cell*(ch: static char): TermCell = TermCell(ch: toRune(ch), fg: None, bg: NoneBg, style: {})
+func cell*(ch: char): TermCell = TermCell(ch: toRune(ch), fg: None, bg: NoneBg, style: {})
 
 func toCellsCT(s: string, fg = None, bg = NoneBg, style: set[Style] = {}): TermCells {.compileTime.} =
   for ch in s.runes: result.add TermCell(ch: ch, fg: fg, bg: bg, style: style)
@@ -42,8 +44,8 @@ func setStyleRT(s: TermCells, style: Style): TermCells =
   for c in result.mitems: c.style.incl style
 
 template genFg(name, enumName: untyped) =
-  func name*(s: TermCell): TermCell {.inline.} =
-    result = s; result.fg = enumName
+  func name*(s: TermCell): TermCell {.inline.} = result = s; result.fg = enumName
+  template name*(c: char): TermCell = TermCell(ch: toRune(c), fg: enumName, bg: NoneBg, style: {})
   template name*(s: string{lit}): TermCell or TermCells =
     when s.len == 1: TermCell(ch: toRune(s), fg: enumName, bg: NoneBg, style: {})
     else: toCellsCT(s, fg = enumName)
@@ -51,8 +53,8 @@ template genFg(name, enumName: untyped) =
   template name*(s: string): TermCells = setFgColorRT(toCellsRT(s), enumName)
 
 template genBg(name, enumName: untyped) =
-  func name*(s: TermCell): TermCell {.inline.} =
-    result = s; result.bg = enumName
+  func name*(s: TermCell): TermCell {.inline.} = result = s; result.bg = enumName
+  template name*(c: char): TermCell = TermCell(ch: toRune(c), fg: None, bg: enumName, style: {})
   template name*(s: string{lit}): TermCell or TermCells =
     when s.len == 1: TermCell(ch: toRune(s), fg: None, bg: enumName, style: {})
     else: toCellsCT(s, bg = enumName)
@@ -60,8 +62,8 @@ template genBg(name, enumName: untyped) =
   template name*(s: string): TermCells = setBgColorRT(toCellsRT(s), enumName)
 
 template genStyle(name, enumName: untyped) =
-  func name*(s: TermCell): TermCell {.inline.} =
-    result = s; result.style.incl enumName
+  func name*(s: TermCell): TermCell {.inline.} = result = s; result.style.incl enumName
+  template name*(c: char): TermCell = TermCell(ch: toRune(c), fg: None, bg: NoneBg, style: enumName)
   template name*(s: string{lit}): TermCell or TermCells =
     when s.len == 1: TermCell(ch: toRune(s), fg: None, bg: NoneBg, style: enumName)
     else: toCellsCT(s, style = enumName)
