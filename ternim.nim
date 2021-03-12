@@ -186,7 +186,8 @@ proc newTermBuffer*(height = terminalHeight().uint16, width = terminalWidth().ui
 
 from strformat import `&`
 
-proc setAttribsAs(c: TermCell): string =
+func setAttribsAs(c: TermCell, currBg: var TermColorBg,
+  currFg: var TermColor, currStyle: var set[Style]): string =
   #Combines all changes into one escape sequence
   #If there is no change this would generate \e[m which is problematic since that will reset everything
   #Luckily this is only called when there IS change
@@ -216,13 +217,27 @@ proc setAttribsAs(c: TermCell): string =
       result.add ';'
   result[^1] = 'm'
 
+func toString*(result: var string, cells: openArray[TermCell]) =
+  var
+    currBg = NoneBg
+    currFg = None
+    currStyle: set[Style]
+
+  for cell in cells:
+    if cell.bg != currBg or cell.fg != currFg or cell.style != currStyle:
+      result.add setAttribsAs(cell, currBg, currFg, currStyle)
+    result.add cell.ch
+
+func toString*(cells: openArray[TermCell]): string =
+  result.toString cells
+
 proc displayFull(tb: TermBuffer) =
   for y in 0'u16..<tb.height:
     writeInstantly &"\e[{y+1};1f" #Seems to be faster that way than a writeDelayed
     for x in 0'u16..<tb.width:
       let c = tb.buf[tb.width * y + x]
       if c.bg != currBg or c.fg != currFg or c.style != currStyle:
-        writeDelayed setAttribsAs c
+        writeDelayed setAttribsAs(c, currBg, currFg, currStyle)
       writeDelayed $c.ch
 
 proc displayDiff(tb: TermBuffer) =
@@ -238,7 +253,7 @@ proc displayDiff(tb: TermBuffer) =
           buf.add &"\e[{x+1}G"
           setPosNexTim = false
         if c.bg != currBg or c.fg != currFg or c.style != currStyle:
-          buf.add setAttribsAs c
+          buf.add setAttribsAs(c, currBg, currFg, currStyle)
         buf.add $c.ch
       else:
         setPosNexTim = true
