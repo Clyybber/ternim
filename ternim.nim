@@ -159,9 +159,23 @@ proc installSignalHandlers() =
   signal(SIGTSTP, SIGTSTP_handler)
   signal(SIGCONT, SIGCONT_handler)
 
+  onUnhandledException = proc(errorMsg: string) {.nimcall, raises: [].} =
+    deinitConsole()
+    resetAttributesInst()
+    showCursor(ttyf)
+    writeInstantly errorMsg
+    close(ttyf)
+    ttyf = nil
+
+proc uninstallSignalHandlers() =
+  signal(SIGTSTP, SIG_DFL)
+  signal(SIGCONT, SIG_DFL)
+
+  onUnhandledException = nil
+
 proc initTernim*() =
-  ttyf = open("/dev/tty", fmWrite)
   ## Needs to be called before doing anything with the library.
+  ttyf = open("/dev/tty", fmWrite)
   #eraseScreen() #Should still do that, since not all terms support alternate buffers (Or should we simply move the cursor to the bottom???
   prevBuf = TermBuffer()
   initConsole()
@@ -170,12 +184,18 @@ proc initTernim*() =
   resetAttributesInst()
 
 proc deinitTernim*() =
-  ## Resets the terminal to its previous state. Needs to be called before exiting the application.
-  #eraseScreen()
-  deinitConsole()
-  resetAttributesInst()
-  showCursor(ttyf)
-  close(ttyf)
+  ## Resets the terminal to its previous state. Should be called before exiting the application.
+  if ttyf != nil: # Protect against duplicate calls of this proc
+    #eraseScreen()
+    deinitConsole()
+    resetAttributesInst()
+    showCursor(ttyf)
+    uninstallSignalHandlers()
+    close(ttyf)
+    ttyf = nil
+
+#addQuitProc proc() {.noconv.} =
+#  deinitTernim()
 
 import private/[termcells, termface, termkeys]
 export termcells, termface, termkeys
