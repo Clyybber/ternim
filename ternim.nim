@@ -251,6 +251,24 @@ func toString*(result: var string, cells: openArray[TermCell]) =
 func toString*(cells: openArray[TermCell]): string =
   result.toString cells
 
+func toString*(result: var string, tb: TermBuffer) =
+  var
+    currBg = NoneBg
+    currFg = None
+    currStyle: set[Style]
+
+  for y in 0'u16..<tb.height:
+    if y > 0: result.add '\n' # &"\e[{y+1};1f"
+    for x in 0'u16..<tb.width:
+      let c = tb.buf[tb.width * y + x]
+      if c.bg != currBg or c.fg != currFg or c.style != currStyle:
+        result.setAttribsAs(c, currBg, currFg, currStyle)
+      result.add $c.ch
+  result.add "\e[m"
+
+func toString*(tb: TermBuffer): string =
+  result.toString tb
+
 proc displayFull(tb: TermBuffer) =
   var cellBuf = ""
   for y in 0'u16..<tb.height:
